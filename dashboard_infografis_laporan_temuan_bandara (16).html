@@ -1,0 +1,1663 @@
+<!DOCTYPE html>
+<html lang="id" class="h-full bg-slate-950 text-slate-100">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Infografis Laporan Temuan Bandara</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+    <!-- SheetJS CDN for parsing Excel & CSV -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            500: '#0284c7',
+                            600: '#0369a1',
+                            700: '#075985',
+                            800: '#0c4a6e',
+                            900: '#0f172a',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+        .glass-card {
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .stat-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 2.5rem;
+            padding: 0.25rem 0.6rem;
+            border-radius: 0.5rem;
+            font-weight: 700;
+            font-size: 0.825rem;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+        .stat-badge:hover {
+            transform: translateY(-1px);
+            filter: brightness(1.2);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+    </style>
+</head>
+<body class="h-full flex flex-col font-sans antialiased text-slate-200 bg-slate-950 min-h-screen">
+
+    <!-- Header Navigation -->
+    <header class="sticky top-0 z-40 bg-slate-900/90 backdrop-blur-md border-b border-slate-800">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="p-2.5 bg-gradient-to-tr from-sky-500 to-indigo-600 rounded-xl shadow-lg shadow-sky-500/20">
+                    <i class="fa-solid fa-plane-departure text-white text-lg"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold text-white tracking-tight leading-none">Dashboard Monitoring Safety Bandara</h1>
+                    <p class="text-xs text-slate-400 mt-1">Infografis Completion Rate Hazard Report & Analytics Pelapor</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center space-x-3">
+                <label for="fileUpload" class="cursor-pointer inline-flex items-center px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-medium text-xs sm:text-sm rounded-lg shadow-lg shadow-emerald-900/30 transition-all duration-200">
+                    <i class="fa-solid fa-file-excel mr-2 text-sm"></i>
+                    <span>Upload Excel / CSV</span>
+                    <input type="file" id="fileUpload" class="hidden" accept=".xlsx, .xls, .csv">
+                </label>
+                <button id="downloadSampleBtn" title="Unduh Contoh Format Data Excel Standar" class="p-2 text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-700 transition">
+                    <i class="fa-solid fa-download"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+        <!-- Panel Seleksi (Filter) -->
+        <section class="glass-card rounded-2xl p-4 sm:p-5 shadow-xl border border-slate-800/80">
+            <div class="flex items-center justify-between mb-3 border-b border-slate-800 pb-2">
+                <div class="flex items-center space-x-2 text-sky-400 font-semibold text-sm">
+                    <i class="fa-solid fa-sliders"></i>
+                    <span>Panel Seleksi & Filter Data</span>
+                </div>
+                <div class="text-xs text-slate-400" id="activeFilterBadge">
+                    Menampilkan seluruh data
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">
+                        <i class="fa-solid fa-building-airport mr-1 text-sky-400"></i> Seleksi Bandara (IATA)
+                    </label>
+                    <select id="airportFilter" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs sm:text-sm text-slate-200 focus:ring-2 focus:ring-sky-500 focus:outline-none">
+                        <option value="ALL">Semua Bandara (IATA)</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">
+                        <i class="fa-regular fa-calendar-days mr-1 text-sky-400"></i> Bulan
+                    </label>
+                    <select id="monthFilter" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs sm:text-sm text-slate-200 focus:ring-2 focus:ring-sky-500 focus:outline-none">
+                        <option value="ALL">Semua Bulan</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">
+                        <i class="fa-regular fa-calendar-minus mr-1 text-sky-400"></i> Dari Tanggal
+                    </label>
+                    <input type="date" id="startDateFilter" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs sm:text-sm text-slate-200 focus:ring-2 focus:ring-sky-500 focus:outline-none">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">
+                        <i class="fa-regular fa-calendar-plus mr-1 text-sky-400"></i> Sampai Tanggal
+                    </label>
+                    <input type="date" id="endDateFilter" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs sm:text-sm text-slate-200 focus:ring-2 focus:ring-sky-500 focus:outline-none">
+                </div>
+
+                <div class="flex items-end space-x-2">
+                    <button id="applyFilterBtn" class="flex-1 bg-sky-600 hover:bg-sky-500 text-white font-medium text-xs sm:text-sm py-2 px-3 rounded-lg transition duration-150 flex items-center justify-center shadow-md shadow-sky-900/30">
+                        <i class="fa-solid fa-filter mr-1.5"></i> Terapkan
+                    </button>
+                    <button id="resetFilterBtn" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium text-xs sm:text-sm py-2 px-3 rounded-lg border border-slate-700 transition duration-150" title="Reset Filter">
+                        <i class="fa-solid fa-rotate"></i>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- KPI Summary Cards -->
+        <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="glass-card rounded-xl p-4 border border-slate-800">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-medium text-slate-400">Total Hazard Report</p>
+                        <h3 id="kpiTotalFindings" class="text-2xl font-bold text-white mt-1">0</h3>
+                    </div>
+                    <div class="p-3 bg-sky-500/10 text-sky-400 rounded-lg border border-sky-500/20">
+                        <i class="fa-solid fa-clipboard-list text-xl"></i>
+                    </div>
+                </div>
+                <div class="mt-3 flex items-center text-xs text-slate-400">
+                    <span id="kpiFindingsSubtitle">Laporan temuan terdaftar</span>
+                </div>
+            </div>
+
+            <div class="glass-card rounded-xl p-4 border border-slate-800">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-medium text-slate-400">Completion Rate (Selesai)</p>
+                        <h3 id="kpiAvgCompletion" class="text-2xl font-bold text-emerald-400 mt-1">0%</h3>
+                    </div>
+                    <div class="p-3 bg-emerald-500/10 text-emerald-400 rounded-lg border border-emerald-500/20">
+                        <i class="fa-solid fa-circle-check text-xl"></i>
+                    </div>
+                </div>
+                <div class="mt-3 flex items-center text-xs text-slate-400">
+                    <span id="kpiCompletedCount" class="text-emerald-400 font-medium mr-1">0</span> status CLOSED (Selesai)
+                </div>
+            </div>
+
+            <div class="glass-card rounded-xl p-4 border border-slate-800">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-medium text-slate-400">Jumlah Laporan Internal</p>
+                        <h3 id="kpiInternalCount" class="text-2xl font-bold text-indigo-400 mt-1">0</h3>
+                    </div>
+                    <div class="p-3 bg-indigo-500/10 text-indigo-400 rounded-lg border border-indigo-500/20">
+                        <i class="fa-solid fa-user-shield text-xl"></i>
+                    </div>
+                </div>
+                <div class="mt-3 flex items-center text-xs text-slate-400">
+                    <span id="kpiInternalRatio" class="text-indigo-400 font-medium mr-1">0%</span> dari total laporan
+                </div>
+            </div>
+
+            <div class="glass-card rounded-xl p-4 border border-slate-800">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-medium text-slate-400">Jumlah Laporan Eksternal</p>
+                        <h3 id="kpiExternalCount" class="text-2xl font-bold text-amber-400 mt-1">0</h3>
+                    </div>
+                    <div class="p-3 bg-amber-500/10 text-amber-400 rounded-lg border border-amber-500/20">
+                        <i class="fa-solid fa-users text-xl"></i>
+                    </div>
+                </div>
+                <div class="mt-3 flex items-center text-xs text-slate-400">
+                    <span id="kpiExternalRatio" class="text-amber-400 font-medium mr-1">0%</span> dari total laporan
+                </div>
+            </div>
+        </section>
+
+        <!-- TABEL PERFORMA BANDARA & REKAPITULASI -->
+        <section class="glass-card rounded-2xl p-5 border border-slate-800 shadow-2xl">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-slate-800">
+                <div>
+                    <h2 class="text-base font-bold text-white flex items-center">
+                        <i class="fa-solid fa-chart-pie text-sky-400 mr-2"></i>
+                        Performa Bandara & Rekapitulasi Hazard Report
+                    </h2>
+                    <p class="text-xs text-slate-400 mt-0.5">Klik angka pada tabel untuk melihat detail rincian laporan temuan per bandara</p>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <button id="downloadRekapExcelBtn" class="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs py-2 px-3.5 rounded-lg shadow-lg shadow-emerald-900/30 transition flex items-center">
+                        <i class="fa-solid fa-file-excel mr-1.5 text-sm"></i> Unduh Rekap Excel
+                    </button>
+                </div>
+            </div>
+
+            <div class="overflow-x-auto rounded-xl border border-slate-800/80 bg-slate-900/60">
+                <table class="w-full text-left border-collapse text-xs">
+                    <thead>
+                        <tr class="bg-slate-900/90 text-slate-400 font-semibold uppercase tracking-wider border-b border-slate-800">
+                            <th class="py-3 px-4">Nama Bandara / Cabang</th>
+                            <th class="py-3 px-4 text-center w-36">Total Hazard</th>
+                            <th class="py-3 px-4 text-center w-32">Selesai</th>
+                            <th class="py-3 px-4 text-center w-32">Proses</th>
+                            <th class="py-3 px-4 text-right w-40">% Penyelesaian</th>
+                        </tr>
+                    </thead>
+                    <tbody id="rekapTableBody" class="divide-y divide-slate-800/50">
+                        <!-- Dynamic rows populated via JS -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- CHARTS SECTION: Combo Chart & Pelapor Chart -->
+        <section class="space-y-6">
+            <!-- Visualisasi Temuan per Bandara (Bar Chart Only) -->
+            <div class="glass-card rounded-2xl p-5 border border-slate-800 flex flex-col justify-between w-full">
+                <div>
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-4 pb-3 border-b border-slate-800 gap-2">
+                        <div>
+                            <h2 class="text-base font-bold text-white flex items-center">
+                                <i class="fa-solid fa-chart-column text-emerald-400 mr-2"></i>
+                                Infografis Visualisasi Temuan per Bandara
+                            </h2>
+                            <p class="text-xs text-slate-400 mt-0.5">Grafik perbandingan Jumlah Temuan CLOSED dan Belum Selesai per Bandara</p>
+                        </div>
+                        <div class="flex items-center space-x-3 text-xs">
+                            <span class="inline-flex items-center text-emerald-400 font-medium"><span class="w-3 h-3 bg-emerald-500 rounded-sm mr-1"></span> Selesai (CLOSED)</span>
+                            <span class="inline-flex items-center text-amber-400 font-medium"><span class="w-3 h-3 bg-amber-500 rounded-sm mr-1"></span> Belum Selesai</span>
+                        </div>
+                    </div>
+                    <div class="relative h-80 sm:h-96 w-full">
+                        <canvas id="chartCompletionRate"></canvas>
+                    </div>
+                </div>
+                <div id="completionSummaryNote" class="mt-4 pt-3 border-t border-slate-800/80 text-xs text-slate-400"></div>
+            </div>
+
+            <!-- Full Width Chart: Jumlah Pelapor Internal vs Eksternal per Bandara -->
+            <div class="glass-card rounded-2xl p-5 border border-slate-800 flex flex-col justify-between w-full">
+                <div>
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-4 pb-3 border-b border-slate-800 gap-2">
+                        <div>
+                            <h2 class="text-base font-bold text-white flex items-center">
+                                <i class="fa-solid fa-chart-column text-sky-400 mr-2"></i>
+                                Jumlah Pelapor Internal & Eksternal Masing-Masing Bandara
+                            </h2>
+                            <p class="text-xs text-slate-400 mt-0.5">Perbandingan kuantitas laporan berdasarkan Kategori Report Source (Diurutkan terbanyak)</p>
+                        </div>
+                    </div>
+                    <div class="relative h-80 sm:h-96 w-full">
+                        <canvas id="chartReportersCount"></canvas>
+                    </div>
+                </div>
+                <div id="reportersSummaryNote" class="mt-4 pt-3 border-t border-slate-800/80 text-xs text-slate-400"></div>
+            </div>
+        </section>
+
+        <!-- Leaderboards Section -->
+        <section class="glass-card rounded-2xl p-5 border border-slate-800 space-y-4">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-slate-800">
+                <div>
+                    <h2 class="text-base font-bold text-white flex items-center">
+                        <i class="fa-solid fa-trophy text-amber-400 mr-2"></i>
+                        Infografis Top 5 Pelapor Terbanyak Masing-Masing Bandara
+                    </h2>
+                    <p class="text-xs text-slate-400 mt-0.5">Filter dan pilih bandara untuk melihat peringkat 5 reporter internal & eksternal teraktif</p>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <label for="leaderboardAirportFilter" class="text-xs font-medium text-slate-400 whitespace-nowrap">
+                        <i class="fa-solid fa-building-airport text-sky-400 mr-1"></i> Filter Bandara:
+                    </label>
+                    <select id="leaderboardAirportFilter" class="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:ring-2 focus:ring-sky-500 focus:outline-none">
+                        <option value="ALL">Semua Bandara (Akumulasi Global)</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Quick Filter Chips per Bandara -->
+            <div id="airportChipsContainer" class="flex flex-wrap gap-1.5 pb-2 border-b border-slate-800/60 text-xs">
+                <!-- Chips added via JS -->
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Top Internal -->
+                <div class="bg-slate-900/50 rounded-xl p-4 border border-slate-800/80">
+                    <div class="flex items-center justify-between mb-3">
+                        <div>
+                            <h3 class="text-xs font-bold text-white flex items-center">
+                                <i class="fa-solid fa-user-shield text-indigo-400 mr-1.5"></i>
+                                Top 5 Pelapor Internal <span id="internalLeaderboardAirportLabel" class="text-indigo-400 ml-1"></span>
+                            </h3>
+                            <p class="text-[11px] text-slate-400">Peringkat Reporter & Instansi Internal Teraktif</p>
+                        </div>
+                        <span class="px-2 py-0.5 bg-indigo-500/10 text-indigo-400 text-[10px] font-semibold rounded-full border border-indigo-500/20">Internal</span>
+                    </div>
+
+                    <div id="topInternalContainer" class="space-y-2.5 max-h-96 overflow-y-auto pr-1"></div>
+                </div>
+
+                <!-- Top External -->
+                <div class="bg-slate-900/50 rounded-xl p-4 border border-slate-800/80">
+                    <div class="flex items-center justify-between mb-3">
+                        <div>
+                            <h3 class="text-xs font-bold text-white flex items-center">
+                                <i class="fa-solid fa-users text-amber-400 mr-1.5"></i>
+                                Top 5 Pelapor Eksternal <span id="externalLeaderboardAirportLabel" class="text-amber-400 ml-1"></span>
+                            </h3>
+                            <p class="text-[11px] text-slate-400">Peringkat Reporter & Perusahaan Eksternal Teraktif</p>
+                        </div>
+                        <span class="px-2 py-0.5 bg-amber-500/10 text-amber-400 text-[10px] font-semibold rounded-full border border-amber-500/20">Eksternal</span>
+                    </div>
+
+                    <div id="topExternalContainer" class="space-y-2.5 max-h-96 overflow-y-auto pr-1"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Data Table Section -->
+        <section class="glass-card rounded-2xl p-5 border border-slate-800">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-slate-800">
+                <div>
+                    <h2 class="text-sm font-bold text-white flex items-center">
+                        <i class="fa-solid fa-table-list text-sky-400 mr-2"></i>
+                        Detail Record Laporan Temuan
+                    </h2>
+                    <p class="text-xs text-slate-400 mt-0.5">Tabel data interaktif berdasarkan Event Date, Airport (IATA Code), Reporter, & Company</p>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <input type="text" id="tableSearchInput" placeholder="Cari pelapor, perusahaan, atau temuan..." class="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-sky-500 w-48 sm:w-64">
+                    <button id="exportCsvBtn" class="bg-slate-800 hover:bg-slate-700 text-xs font-medium py-1.5 px-3 rounded-lg border border-slate-700 transition text-slate-300">
+                        <i class="fa-solid fa-file-export mr-1"></i> Ekspor CSV
+                    </button>
+                </div>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs text-slate-300">
+                    <thead class="bg-slate-900/80 text-slate-400 font-semibold uppercase tracking-wider border-b border-slate-800">
+                        <tr>
+                            <th class="px-3 py-3">No</th>
+                            <th class="px-3 py-3">Event Date</th>
+                            <th class="px-3 py-3">Airport (IATA)</th>
+                            <th class="px-3 py-3">Report Source</th>
+                            <th class="px-3 py-3">Reporter Name</th>
+                            <th class="px-3 py-3">Company/Airport</th>
+                            <th class="px-3 py-3">Judul Temuan</th>
+                            <th class="px-3 py-3">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dataTableBody" class="divide-y divide-slate-800/60"></tbody>
+                </table>
+            </div>
+
+            <div class="mt-4 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-400 gap-2">
+                <span id="tablePaginationInfo">Menampilkan 0 dari 0 data</span>
+                <div class="flex items-center space-x-1" id="paginationControls"></div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- MODAL POPUP UNTUK RINCIAN DATA HASIL KLIK ANGKA TABEL -->
+    <div id="detailModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm hidden">
+        <div class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-4xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div class="px-6 py-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/90">
+                <div>
+                    <h3 id="modalTitle" class="text-base font-bold text-white flex items-center">
+                        <i class="fa-solid fa-circle-info text-sky-400 mr-2"></i> Rincian Data Temuan Bandara
+                    </h3>
+                    <p id="modalSubtitle" class="text-xs text-slate-400 mt-0.5">Menampilkan detail temuan sesuai kategori yang dipilih</p>
+                </div>
+                <button id="closeModalBtn" class="text-slate-400 hover:text-white p-2 rounded-lg bg-slate-800 hover:bg-slate-700 transition">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            
+            <div class="p-6 overflow-y-auto flex-1">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs text-slate-300">
+                        <thead class="bg-slate-950/80 text-slate-400 font-semibold uppercase tracking-wider border-b border-slate-800">
+                            <tr>
+                                <th class="px-3 py-2.5">No</th>
+                                <th class="px-3 py-2.5">Event Date</th>
+                                <th class="px-3 py-2.5">Airport</th>
+                                <th class="px-3 py-2.5">Source</th>
+                                <th class="px-3 py-2.5">Nama Pelapor</th>
+                                <th class="px-3 py-2.5">Perusahaan</th>
+                                <th class="px-3 py-2.5">Judul Temuan</th>
+                                <th class="px-3 py-2.5">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="modalTableBody" class="divide-y divide-slate-800/60"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="px-6 py-3 border-t border-slate-800 bg-slate-950/50 flex justify-between items-center text-xs text-slate-400">
+                <span id="modalTotalCount">Total: 0 Data</span>
+                <button id="closeModalFooterBtn" class="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-lg border border-slate-700 font-medium transition">Tutup</button>
+            </div>
+        </div>
+    </div>
+
+    <footer class="mt-auto border-t border-slate-800 bg-slate-900/50 py-4 text-center text-xs text-slate-500">
+        <p>© 2026 Airport Safety Management System • Interactive Infographics Dashboard (IATA Standard)</p>
+    </footer>
+
+    <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col space-y-2 pointer-events-none"></div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            Chart.register(ChartDataLabels);
+            initFiltersDropdowns();
+            attachEventListeners();
+            processAndUpdateDashboard();
+        });
+
+        // Helper untuk menormalisasi nama instansi/perusahaan (Penggabungan Ganda)
+        function normalizeCompanyName(companyStr) {
+            if (!companyStr) return '-';
+            let str = String(companyStr).trim();
+            // Hapus awalan/akhiran PT, CV, NV untuk mencocokkan entitas yang sama
+            str = str.replace(/^(PT\.?|CV\.?|NV\.?)\s+/i, '');
+            str = str.replace(/\s+(PT\.?|CV\.?)$/i, '');
+            str = str.trim();
+
+            const lower = str.toLowerCase();
+            if (lower === 'api' || lower === 'pt api' || lower === 'angkasa pura' || lower === 'angkasa pura i' || lower === 'angkasa pura ii' || lower === 'angkasa pura indonesia') {
+                return 'InJourney Airports (API)';
+            }
+            if (lower.includes('gmf') || lower.includes('garuda maintenance')) {
+                return 'PT GMF AeroAsia';
+            }
+            if (lower.includes('swissport')) {
+                return 'Swissport Indonesia';
+            }
+            if (lower.includes('jas') || lower.includes('jas airport')) {
+                return 'PT JAS Airport Services';
+            }
+            return str;
+        }
+
+        // Helper untuk menormalisasi nama pelapor
+        function normalizeReporterName(nameStr) {
+            if (!nameStr) return 'Anonim';
+            let str = String(nameStr).trim();
+            // Bersihkan spasi ganda atau karakter berlebih
+            return str.replace(/\s+/g, ' ');
+        }
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            if (!container) return;
+
+            const toast = document.createElement('div');
+            toast.className = `pointer-events-auto flex items-center space-x-2 px-4 py-3 rounded-xl shadow-2xl text-xs font-medium border transition-all duration-300 transform translate-y-2 opacity-0 ${
+                type === 'error' 
+                    ? 'bg-rose-950/90 text-rose-200 border-rose-800' 
+                    : 'bg-slate-900/95 text-sky-200 border-sky-800'
+            }`;
+
+            const iconClass = type === 'error' ? 'fa-triangle-exclamation text-rose-400' : 'fa-circle-check text-sky-400';
+            toast.innerHTML = `<i class="fa-solid ${iconClass} text-sm"></i><span>${message}</span>`;
+
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            }, 10);
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        }
+
+        function isClosedStatus(statusStr) {
+            if (!statusStr) return false;
+            const s = String(statusStr).trim().toUpperCase();
+            return s === 'CLOSED' || s.includes('CLOSED') || s.includes('SELESAI') || s.includes('DONE');
+        }
+
+        function determineReportSource(reporterName, companyName, rawSource) {
+            const reporter = String(reporterName || '').toLowerCase().trim();
+            const company = String(companyName || '').toLowerCase().trim();
+            const source = String(rawSource || '').toLowerCase().trim();
+
+            if (reporter.includes('athifa') || company.includes('athifa')) {
+                return 'Eksternal';
+            }
+
+            const intKeywords = [
+                'angkasa pura', 'angkasapura', 'injourney', 'api', 'ap1', 'ap2', 'ap i', 'ap ii',
+                'internal', 'apron', 'safety', 'avsec', 'atc', 'arff', 'technic', 'engineering', 
+                'ops', 'unit', 'staff', 'bandara', 'airport', 'fire station', 'amc', 'terminal'
+            ];
+
+            if (intKeywords.some(kw => company.includes(kw) || reporter.includes(kw) || source.includes(kw))) {
+                if (!company.includes('garuda') && !company.includes('gmf') && !company.includes('swissport') && !company.includes('jas') && !company.includes('citilink') && !company.includes('lion')) {
+                    return 'Internal';
+                }
+            }
+
+            const extKeywords = [
+                'athifa', 'garuda', 'gmf', 'swissport', 'jas', 'lion', 'citilink', 'airasia', 'batik', 
+                'super air jet', 'sriwijaya', 'tri-mg', 'cardig', 'gapura', 'kokapura', 'clean', 
+                'vendor', 'mitra', 'kontraktor', 'contractor', 'outsourcing', 'eksternal', 'external', 'cargo', 'catering'
+            ];
+
+            if (extKeywords.some(kw => company.includes(kw) || reporter.includes(kw) || source.includes(kw))) {
+                return 'Eksternal';
+            }
+
+            if (source === 'eksternal' || source === 'external' || source.includes('eks') || source.includes('ext')) {
+                return 'Eksternal';
+            }
+
+            return 'Internal';
+        }
+
+        const airportFullNameMap = {
+            'BTJ': 'SULTAN ISKANDAR MUDA',
+            'DTB': 'RAJA SISINGAMANGARAJA XII',
+            'PDG': 'MINANGKABAU',
+            'PKU': 'SULTAN SYARIF KASIM II',
+            'DJB': 'SULTAN THAHA',
+            'PLM': 'SULTAN MAHMUD BADARUDDIN II',
+            'BKS': 'FATMAWATI SOEKARNO',
+            'TKG': 'RADIN INTEN II',
+            'PGK': 'DEPATI AMIR',
+            'TJQ': 'H. AS. HANANDJOEDDIN',
+            'TNJ': 'RAJA HAJI FISABILILLAH',
+            'HLP': 'HALIM PERDANA KUSUMA',
+            'BDO': 'HUSEIN SASTRANEGARA',
+            'KJT': 'KERTAJATI',
+            'SOC': 'ADI SOEMARMO',
+            'SRG': 'JENDERAL AHMAD YANI',
+            'PWL': 'JENDERAL BESAR SOEDIRMAN',
+            'JOG': 'ADISUTJIPTO',
+            'YIA': 'YOGYAKARTA',
+            'BWX': 'BANYUWANGI',
+            'SUB': 'JUANDA',
+            'DHX': 'DHOHO',
+            'CGK': 'SOEKARNO HATTA',
+            'DPS': 'I GUSTI NGURAH RAI',
+            'LOP': 'ZAINUDDIN ABDUL MADJID',
+            'KOE': 'EL TARI',
+            'PNK': 'SUPADIO',
+            'PKY': 'TJILIK RIWUT',
+            'BDJ': 'SYAMSUDIN NOOR',
+            'BPN': 'SULTAN AJI MUHAMMAD SULAIMAN',
+            'MDC': 'SAM RATULANGI',
+            'UPG': 'SULTAN HASANUDDIN',
+            'AMQ': 'PATTIMURA',
+            'DJJ': 'SENTANI',
+            'BIK': 'FRANS KAISIEPO'
+        };
+
+        function convertToIATA(val) {
+            if (!val || String(val).trim() === '') return 'UNKNOWN';
+            let str = String(val).trim();
+            
+            const parenMatch = str.match(/\(([A-Za-z]{3})\)/);
+            if (parenMatch) return parenMatch[1].toUpperCase();
+
+            if (/^[A-Za-z]{3}$/.test(str)) return str.toUpperCase();
+
+            const dictionary = {
+                'iskandar muda': 'BTJ', 'aceh': 'BTJ', 'btj': 'BTJ',
+                'sisingamangaraja': 'DTB', 'silangit': 'DTB', 'dtb': 'DTB',
+                'minangkabau': 'PDG', 'padang': 'PDG', 'pdg': 'PDG',
+                'syarif kasim': 'PKU', 'pekanbaru': 'PKU', 'pku': 'PKU',
+                'sultan thaha': 'DJB', 'jambi': 'DJB', 'djb': 'DJB',
+                'mahmud badaruddin': 'PLM', 'palembang': 'PLM', 'plm': 'PLM',
+                'fatmawati': 'BKS', 'bengkulu': 'BKS', 'bks': 'BKS',
+                'radin inten': 'TKG', 'lampung': 'TKG', 'tkg': 'TKG',
+                'depati amir': 'PGK', 'pangkalpinang': 'PGK', 'pgk': 'PGK',
+                'hanandjoeddin': 'TJQ', 'belitung': 'TJQ', 'tjq': 'TJQ',
+                'fisa': 'TNJ', 'tanjung pinang': 'TNJ', 'tnj': 'TNJ',
+                'halim': 'HLP', 'hlp': 'HLP',
+                'husein': 'BDO', 'bandung': 'BDO', 'bdo': 'BDO',
+                'kertajati': 'KJT', 'majalengka': 'KJT', 'kjt': 'KJT',
+                'adi soemarmo': 'SOC', 'solo': 'SOC', 'soc': 'SOC',
+                'ahmad yani': 'SRG', 'semarang': 'SRG', 'srg': 'SRG',
+                'soedirman': 'PWL', 'purbalingga': 'PWL', 'pwl': 'PWL',
+                'adisutjipto': 'JOG', 'jogja': 'JOG', 'jog': 'JOG',
+                'yogyakarta': 'YIA', 'kulon progo': 'YIA', 'yia': 'YIA',
+                'banyuwangi': 'BWX', 'bwx': 'BWX',
+                'juanda': 'SUB', 'surabaya': 'SUB', 'sub': 'SUB',
+                'dhoho': 'DHX', 'kediri': 'DHX', 'dhx': 'DHX',
+                'soekarno hatta': 'CGK', 'cengkareng': 'CGK', 'jakarta': 'CGK', 'cgk': 'CGK',
+                'ngurah rai': 'DPS', 'bali': 'DPS', 'denpasar': 'DPS', 'dps': 'DPS',
+                'zainuddin': 'LOP', 'lombok': 'LOP', 'praya': 'LOP', 'lop': 'LOP',
+                'el tari': 'KOE', 'kupang': 'KOE', 'koe': 'KOE',
+                'supadio': 'PNK', 'pontianak': 'PNK', 'pnk': 'PNK',
+                'tjilik riwut': 'PKY', 'palangkaraya': 'PKY', 'pky': 'PKY',
+                'syamsudin noor': 'BDJ', 'banjarmasin': 'BDJ', 'bdj': 'BDJ',
+                'sultan aji': 'BPN', 'sepinggan': 'BPN', 'balikpapan': 'BPN', 'bpn': 'BPN',
+                'sam ratulangi': 'MDC', 'manado': 'MDC', 'mdc': 'MDC',
+                'sultan hasanuddin': 'UPG', 'makassar': 'UPG', 'upg': 'UPG',
+                'pattimura': 'AMQ', 'ambon': 'AMQ', 'amq': 'AMQ',
+                'sentani': 'DJJ', 'jayapura': 'DJJ', 'djj': 'DJJ',
+                'frans kaisiepo': 'BIK', 'biak': 'BIK', 'bik': 'BIK',
+                'kualanamu': 'KNO', 'kno': 'KNO',
+                'hang nadim': 'BTH', 'batam': 'BTH', 'bth': 'BTH'
+            };
+
+            const lower = str.toLowerCase();
+            for (let key in dictionary) {
+                if (lower.includes(key)) return dictionary[key];
+            }
+
+            return str.toUpperCase();
+        }
+
+        function isAllowedAirport(code) {
+            if (!code) return false;
+            const c = String(code).trim().toUpperCase();
+            const excluded = ['UNKNOWN', 'KNO', 'BTH', '-'];
+            return c !== '' && !excluded.includes(c);
+        }
+
+        const initialSampleData = [
+            { id: 1, airport: "CGK", event_date: "2026-01-05", report_source: "Internal", reporter_name: "Ahmad Hidayat", company: "Apron Ground Ops", judul: "Kerusakan Paving Taxiway Charlie", status: "CLOSED" },
+            { id: 2, airport: "CGK", event_date: "2026-01-08", report_source: "Internal", reporter_name: "Ahmad Hidayat", company: "Apron Ground Ops", judul: "Lampu FOD pada Gate 22 Mati", status: "CLOSED" },
+            { id: 3, airport: "CGK", event_date: "2026-01-12", report_source: "Internal", reporter_name: "Budi Santoso", company: "Safety Ops Unit", judul: "Ceceran Oli di Parking Stand 14", status: "CLOSED" },
+            { id: 4, airport: "CGK", event_date: "2026-01-15", report_source: "Internal", reporter_name: "Budi Santoso", company: "Safety Ops Unit", judul: "Penanda marka apron pudar di Terminal 3", status: "ON-PROGRESS" },
+            { id: 5, airport: "CGK", event_date: "2026-01-18", report_source: "Eksternal", reporter_name: "Rudi Hermawan", company: "PT Garuda Maintenance (GMF)", judul: "Pintu Hangar 2 Macet", status: "CLOSED" },
+            { id: 6, airport: "CGK", event_date: "2026-01-20", report_source: "Eksternal", reporter_name: "Athifa", company: "PT Cardig Air Cargo", judul: "Tekanan Air Ground Power Unit Rendah", status: "CLOSED" },
+            { id: 7, airport: "CGK", event_date: "2026-01-22", report_source: "Eksternal", reporter_name: "Surya Pratama", company: "CV Clean & Clear Service", judul: "Tumpahan Sampah Domestik di Loading Dock", status: "OPEN" },
+
+            { id: 8, airport: "DPS", event_date: "2026-01-06", report_source: "Internal", reporter_name: "I Wayan Sudiarta", company: "Avsec DPS", judul: "Scanner X-Ray Gate 3 Erratic", status: "CLOSED" },
+            { id: 9, airport: "DPS", event_date: "2026-01-10", report_source: "Internal", reporter_name: "I Wayan Sudiarta", company: "Avsec DPS", judul: "Pagar Perimeter Selatan Kendor", status: "CLOSED" },
+            { id: 10, airport: "DPS", event_date: "2026-01-14", report_source: "Internal", reporter_name: "Kadek Agus", company: "Safety Unit DPS", judul: "Kabel Genset Darurat Terkelupas", status: "CLOSED" },
+            { id: 11, airport: "DPS", event_date: "2026-01-19", report_source: "Eksternal", reporter_name: "Made Suardana", company: "Swissport Ground Handling", judul: "Hydrant refueling valve kaku", status: "CLOSED" },
+            { id: 12, airport: "DPS", event_date: "2026-01-21", report_source: "Eksternal", reporter_name: "Athifa", company: "Swissport Ground Handling", judul: "Marka towing tug tidak jelas", status: "ON-PROGRESS" },
+
+            { id: 13, airport: "SUB", event_date: "2026-02-02", report_source: "Internal", reporter_name: "Siti Rahma", company: "ATC Ops SUB", judul: "Kamera CCTV Runway 10 Blur", status: "CLOSED" },
+            { id: 14, airport: "SUB", event_date: "2026-02-05", report_source: "Internal", reporter_name: "Siti Rahma", company: "ATC Ops SUB", judul: "Antena VHF 2 Hambatan Sinyal", status: "CLOSED" },
+            { id: 15, airport: "SUB", event_date: "2026-02-09", report_source: "Internal", reporter_name: "Rony Wijaya", company: "ARFF SUB Fire Station", judul: "Tekanan APAR di Fire Station 1 Turun", status: "OPEN" },
+            { id: 16, airport: "SUB", event_date: "2026-02-12", report_source: "Eksternal", reporter_name: "Hendra Setiawan", company: "PT JAS Airport Services", judul: "Conveyor Belt 4 Macet Saat Peak Hours", status: "ON-PROGRESS" },
+
+            { id: 19, airport: "UPG", event_date: "2026-02-08", report_source: "Internal", reporter_name: "Andi Tenri", company: "Safety Staff UPG", judul: "Burung Liar di Sekitar Runway 21", status: "CLOSED" },
+            { id: 20, airport: "UPG", event_date: "2026-02-25", report_source: "Eksternal", reporter_name: "Daeng Rahmat", company: "PT Kokapura", judul: "Atap Tenant Area Foodcourt Bocor", status: "CLOSED" }
+        ];
+
+        let rawDataset = initialSampleData
+            .filter(d => isAllowedAirport(d.airport))
+            .map(d => ({
+                ...d,
+                report_source: determineReportSource(d.reporter_name, d.company, d.report_source)
+            }));
+        let filteredDataset = [...rawDataset];
+
+        let completionChartInstance = null;
+        let reportersChartInstance = null;
+        let currentPage = 1;
+        const rowsPerPage = 6;
+
+        function initFiltersDropdowns() {
+            const airportSelect = document.getElementById('airportFilter');
+            const leaderboardAirportSelect = document.getElementById('leaderboardAirportFilter');
+            const monthSelect = document.getElementById('monthFilter');
+
+            const currentAirport = airportSelect.value;
+            const currentLbAirport = leaderboardAirportSelect ? leaderboardAirportSelect.value : 'ALL';
+            const currentMonth = monthSelect.value;
+
+            const airports = [...new Set(rawDataset.map(d => d.airport))]
+                .filter(isAllowedAirport)
+                .sort();
+
+            airportSelect.innerHTML = '<option value="ALL">Semua Bandara (IATA)</option>';
+            if (leaderboardAirportSelect) {
+                leaderboardAirportSelect.innerHTML = '<option value="ALL">Semua Bandara (Akumulasi Global)</option>';
+            }
+
+            airports.forEach(a => {
+                const opt = document.createElement('option');
+                opt.value = a;
+                opt.textContent = `${a} - ${airportFullNameMap[a] || a}`;
+                airportSelect.appendChild(opt);
+
+                if (leaderboardAirportSelect) {
+                    const lbOpt = document.createElement('option');
+                    lbOpt.value = a;
+                    lbOpt.textContent = `${a} - ${airportFullNameMap[a] || a}`;
+                    leaderboardAirportSelect.appendChild(lbOpt);
+                }
+            });
+
+            const months = [...new Set(rawDataset.map(d => {
+                const dtStr = d.event_date;
+                if (!dtStr) return null;
+                const dt = new Date(dtStr);
+                if (isNaN(dt.getTime())) return null;
+                return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}`;
+            }))].filter(Boolean).sort().reverse();
+
+            const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+            monthSelect.innerHTML = '<option value="ALL">Semua Bulan</option>';
+            months.forEach(m => {
+                const [yyyy, mm] = m.split('-');
+                const opt = document.createElement('option');
+                opt.value = m;
+                opt.textContent = `${monthNames[parseInt(mm) - 1]} ${yyyy}`;
+                monthSelect.appendChild(opt);
+            });
+
+            if (airports.includes(currentAirport)) airportSelect.value = currentAirport;
+            if (leaderboardAirportSelect && airports.includes(currentLbAirport)) leaderboardAirportSelect.value = currentLbAirport;
+            if (months.includes(currentMonth)) monthSelect.value = currentMonth;
+
+            renderAirportChips(airports);
+        }
+
+        function renderAirportChips(airports) {
+            const container = document.getElementById('airportChipsContainer');
+            if (!container) return;
+
+            const selectedLbAirport = document.getElementById('leaderboardAirportFilter')?.value || 'ALL';
+            container.innerHTML = '';
+
+            const allChip = document.createElement('button');
+            allChip.className = `px-2.5 py-1 rounded-md text-[11px] font-semibold transition ${selectedLbAirport === 'ALL' ? 'bg-sky-600 text-white shadow-md' : 'bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700'}`;
+            allChip.textContent = 'Semua Bandara';
+            allChip.onclick = () => {
+                document.getElementById('leaderboardAirportFilter').value = 'ALL';
+                renderAirportChips(airports);
+                renderTopReportersLeaderboard();
+            };
+            container.appendChild(allChip);
+
+            airports.forEach(code => {
+                const chip = document.createElement('button');
+                chip.className = `px-2.5 py-1 rounded-md text-[11px] font-semibold transition ${selectedLbAirport === code ? 'bg-sky-600 text-white shadow-md' : 'bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700'}`;
+                chip.textContent = code;
+                chip.title = airportFullNameMap[code] || code;
+                chip.onclick = () => {
+                    document.getElementById('leaderboardAirportFilter').value = code;
+                    renderAirportChips(airports);
+                    renderTopReportersLeaderboard();
+                };
+                container.appendChild(chip);
+            });
+        }
+
+        function attachEventListeners() {
+            document.getElementById('applyFilterBtn').addEventListener('click', applyFilters);
+            document.getElementById('resetFilterBtn').addEventListener('click', resetFilters);
+            document.getElementById('fileUpload').addEventListener('change', handleFileUpload);
+            document.getElementById('downloadSampleBtn').addEventListener('click', generateAndDownloadSample);
+            document.getElementById('tableSearchInput').addEventListener('input', () => {
+                currentPage = 1;
+                renderDataTable();
+            });
+            document.getElementById('exportCsvBtn').addEventListener('click', exportFilteredDataCSV);
+            document.getElementById('downloadRekapExcelBtn').addEventListener('click', exportRekapTableExcel);
+
+            const lbFilter = document.getElementById('leaderboardAirportFilter');
+            if (lbFilter) {
+                lbFilter.addEventListener('change', () => {
+                    const airports = [...new Set(rawDataset.map(d => d.airport))].filter(isAllowedAirport).sort();
+                    renderAirportChips(airports);
+                    renderTopReportersLeaderboard();
+                });
+            }
+
+            document.getElementById('closeModalBtn').addEventListener('click', closeModal);
+            document.getElementById('closeModalFooterBtn').addEventListener('click', closeModal);
+            document.getElementById('detailModal').addEventListener('click', (e) => {
+                if (e.target.id === 'detailModal') closeModal();
+            });
+        }
+
+        function applyFilters() {
+            const selectedAirport = document.getElementById('airportFilter').value;
+            const selectedMonth = document.getElementById('monthFilter').value;
+            const startDate = document.getElementById('startDateFilter').value;
+            const endDate = document.getElementById('endDateFilter').value;
+
+            filteredDataset = rawDataset.filter(item => {
+                if (selectedAirport !== 'ALL' && item.airport !== selectedAirport) {
+                    return false;
+                }
+
+                if (selectedMonth !== 'ALL' && item.event_date) {
+                    const dt = new Date(item.event_date);
+                    if (!isNaN(dt.getTime())) {
+                        const itemMonth = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}`;
+                        if (itemMonth !== selectedMonth) return false;
+                    }
+                }
+
+                if (startDate && item.event_date && item.event_date < startDate) {
+                    return false;
+                }
+
+                if (endDate && item.event_date && item.event_date > endDate) {
+                    return false;
+                }
+
+                return true;
+            });
+
+            currentPage = 1;
+            updateActiveFilterBadgeText(selectedAirport, selectedMonth, startDate, endDate);
+            processAndUpdateDashboard();
+        }
+
+        function resetFilters() {
+            document.getElementById('airportFilter').value = 'ALL';
+            document.getElementById('monthFilter').value = 'ALL';
+            document.getElementById('startDateFilter').value = '';
+            document.getElementById('endDateFilter').value = '';
+
+            filteredDataset = [...rawDataset];
+            currentPage = 1;
+            updateActiveFilterBadgeText('ALL', 'ALL', '', '');
+            processAndUpdateDashboard();
+        }
+
+        function updateActiveFilterBadgeText(airport, month, start, end) {
+            const badge = document.getElementById('activeFilterBadge');
+            if (!badge) return;
+
+            let filterTexts = [];
+            if (airport !== 'ALL') filterTexts.push(`Bandara: ${airport}`);
+            if (month !== 'ALL') filterTexts.push(`Bulan: ${month}`);
+            if (start) filterTexts.push(`Dari: ${start}`);
+            if (end) filterTexts.push(`Sampai: ${end}`);
+
+            if (filterTexts.length === 0) {
+                badge.textContent = "Menampilkan seluruh data";
+            } else {
+                badge.textContent = "Filter Aktif: " + filterTexts.join(" | ");
+            }
+        }
+
+        function processAndUpdateDashboard() {
+            renderKPICards();
+            renderRekapitulasiTable();
+            renderCombinedTemuanCompletionChart();
+            renderReportersCountChart();
+            renderTopReportersLeaderboard();
+            renderDataTable();
+        }
+
+        function renderKPICards() {
+            const total = filteredDataset.length;
+            const completed = filteredDataset.filter(d => isClosedStatus(d.status)).length;
+            const openCount = total - completed;
+
+            const internalCount = filteredDataset.filter(d => String(d.report_source).toLowerCase().includes('internal')).length;
+            const externalCount = filteredDataset.filter(d => String(d.report_source).toLowerCase().includes('eksternal')).length;
+
+            const completionRate = total > 0 ? ((completed / total) * 100).toFixed(1) : 0;
+            const internalRatio = total > 0 ? ((internalCount / total) * 100).toFixed(0) : 0;
+            const externalRatio = total > 0 ? ((externalCount / total) * 100).toFixed(0) : 0;
+
+            document.getElementById('kpiTotalFindings').textContent = total;
+            document.getElementById('kpiAvgCompletion').textContent = `${completionRate}%`;
+            document.getElementById('kpiCompletedCount').textContent = completed;
+            document.getElementById('kpiInternalCount').textContent = internalCount;
+            document.getElementById('kpiInternalRatio').textContent = `${internalRatio}%`;
+            document.getElementById('kpiExternalCount').textContent = externalCount;
+            document.getElementById('kpiExternalRatio').textContent = `${externalRatio}%`;
+
+            document.getElementById('kpiFindingsSubtitle').textContent = `Belum Complete (OPEN/PROSES): ${openCount}`;
+        }
+
+        function renderRekapitulasiTable() {
+            const tbody = document.getElementById('rekapTableBody');
+            tbody.innerHTML = '';
+
+            const bandaraMap = {};
+            filteredDataset.forEach(item => {
+                if (!isAllowedAirport(item.airport)) return;
+
+                const b = item.airport || 'UNKNOWN';
+                if (!bandaraMap[b]) {
+                    bandaraMap[b] = { code: b, total: 0, completed: 0, open: 0 };
+                }
+                bandaraMap[b].total += 1;
+                if (isClosedStatus(item.status)) {
+                    bandaraMap[b].completed += 1;
+                } else {
+                    bandaraMap[b].open += 1;
+                }
+            });
+
+            const sortedAirports = Object.values(bandaraMap).sort((a, b) => {
+                const rateA = a.total > 0 ? (a.completed / a.total) : 0;
+                const rateB = b.total > 0 ? (b.completed / b.total) : 0;
+                if (rateB !== rateA) return rateB - rateA;
+                return b.total - a.total;
+            });
+
+            if (sortedAirports.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="py-6 text-center text-slate-500 text-xs">Tidak ada data untuk rekapitulasi bandara.</td></tr>`;
+                return;
+            }
+
+            sortedAirports.forEach(data => {
+                const fullName = airportFullNameMap[data.code] || `Bandara (${data.code})`;
+                const rate = data.total > 0 ? ((data.completed / data.total) * 100).toFixed(1) : "0.0";
+
+                let rateColorClass = "text-emerald-400 font-bold";
+                if (parseFloat(rate) < 50) rateColorClass = "text-rose-400 font-bold";
+                else if (parseFloat(rate) < 80) rateColorClass = "text-amber-400 font-bold";
+
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-800/40 transition border-b border-slate-800/40";
+                tr.innerHTML = `
+                    <td class="py-3 px-4 font-semibold text-slate-200">
+                        ${fullName} <span class="text-xs font-mono text-slate-500 font-normal">(${data.code})</span>
+                    </td>
+                    <td class="py-3 px-4 text-center">
+                        <span onclick="openDetailModal('${data.code}', 'ALL')" class="stat-badge bg-sky-500/20 text-sky-400 border border-sky-500/30">
+                            ${data.total}
+                        </span>
+                    </td>
+                    <td class="py-3 px-4 text-center">
+                        <span onclick="openDetailModal('${data.code}', 'CLOSED')" class="stat-badge bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                            ${data.completed}
+                        </span>
+                    </td>
+                    <td class="py-3 px-4 text-center">
+                        <span onclick="openDetailModal('${data.code}', 'OPEN')" class="stat-badge bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                            ${data.open}
+                        </span>
+                    </td>
+                    <td class="py-3 px-4 text-right font-mono ${rateColorClass}">
+                        ${rate}%
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function renderCombinedTemuanCompletionChart() {
+            const ctx = document.getElementById('chartCompletionRate').getContext('2d');
+
+            const bandaraMap = {};
+            filteredDataset.forEach(item => {
+                if (!isAllowedAirport(item.airport)) return;
+
+                const b = item.airport || 'UNKNOWN';
+                if (!bandaraMap[b]) {
+                    bandaraMap[b] = { total: 0, completed: 0, open: 0 };
+                }
+                bandaraMap[b].total += 1;
+                if (isClosedStatus(item.status)) {
+                    bandaraMap[b].completed += 1;
+                } else {
+                    bandaraMap[b].open += 1;
+                }
+            });
+
+            // Urutkan bandara berdasarkan total temuan terbanyak secara descending
+            const labels = Object.keys(bandaraMap).sort((a, b) => bandaraMap[b].total - bandaraMap[a].total);
+
+            const completedData = labels.map(b => bandaraMap[b].completed);
+            const openData = labels.map(b => bandaraMap[b].open);
+
+            if (completionChartInstance) {
+                completionChartInstance.destroy();
+            }
+
+            // Custom Plugin untuk Menampilkan Total Angka di Atas Setiap Bar Stacked
+            const totalBarLabelsPlugin = {
+                id: 'totalBarLabelsPlugin',
+                afterDatasetsDraw(chart) {
+                    const { ctx } = chart;
+                    const meta0 = chart.getDatasetMeta(0);
+                    const meta1 = chart.getDatasetMeta(1);
+                    if (!meta0 || !meta1) return;
+
+                    chart.data.labels.forEach((label, index) => {
+                        if (!meta0.data[index] || !meta1.data[index]) return;
+
+                        const val0 = chart.data.datasets[0].data[index] || 0;
+                        const val1 = chart.data.datasets[1].data[index] || 0;
+                        const total = val0 + val1;
+
+                        if (total <= 0) return;
+
+                        const y0 = meta0.data[index].y;
+                        const y1 = meta1.data[index].y;
+                        const topY = Math.min(y0, y1);
+                        const posX = meta0.data[index].x;
+
+                        ctx.save();
+                        ctx.fillStyle = '#38bdf8'; // Sky blue text
+                        ctx.font = 'bold 11px Inter, sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'bottom';
+                        ctx.fillText(total, posX, topY - 4);
+                        ctx.restore();
+                    });
+                }
+            };
+
+            completionChartInstance = new Chart(ctx, {
+                type: 'bar',
+                plugins: [totalBarLabelsPlugin],
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Selesai (CLOSED)',
+                            data: completedData,
+                            backgroundColor: 'rgba(16, 185, 129, 0.85)',
+                            borderColor: '#10b981',
+                            borderWidth: 1,
+                            borderRadius: 4,
+                        },
+                        {
+                            label: 'Belum Selesai (OPEN / PROSES)',
+                            data: openData,
+                            backgroundColor: 'rgba(245, 158, 11, 0.85)',
+                            borderColor: '#f59e0b',
+                            borderWidth: 1,
+                            borderRadius: 4,
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: { color: '#cbd5e1', font: { size: 11 } }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const b = context.label;
+                                    const stats = bandaraMap[b];
+                                    const rate = stats.total > 0 ? ((stats.completed / stats.total) * 100).toFixed(1) : 0;
+                                    return ` ${context.dataset.label}: ${context.parsed.y} (Completion Rate: ${rate}%)`;
+                                }
+                            }
+                        },
+                        datalabels: {
+                            color: '#ffffff',
+                            anchor: 'center',
+                            align: 'center',
+                            font: { weight: 'bold', size: 9 },
+                            formatter: (val, context) => {
+                                // Tampilkan nilai dalam segmen hanya jika cukup proporsional (> 3)
+                                if (val < 4) return '';
+                                return val;
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            stacked: true,
+                            grid: { display: false },
+                            ticks: { color: '#e2e8f0', font: { size: 11, weight: 'bold' } }
+                        },
+                        y: {
+                            stacked: true,
+                            grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                            ticks: { color: '#94a3b8' },
+                            beginAtZero: true,
+                            grace: '12%', // Ruang ekstra di atas bar untuk label total
+                            title: { display: true, text: 'Jumlah Laporan Hazard', color: '#cbd5e1', font: { size: 11 } }
+                        }
+                    },
+                    layout: { padding: { top: 18 } }
+                }
+            });
+
+            const bestAirport = labels.length > 0 
+                ? labels.reduce((prev, curr) => {
+                    const ratePrev = bandaraMap[prev].total > 0 ? (bandaraMap[prev].completed / bandaraMap[prev].total) : 0;
+                    const rateCurr = bandaraMap[curr].total > 0 ? (bandaraMap[curr].completed / bandaraMap[curr].total) : 0;
+                    return rateCurr > ratePrev ? curr : prev;
+                }, labels[0]) 
+                : null;
+
+            const bestRate = bestAirport && bandaraMap[bestAirport].total > 0 
+                ? ((bandaraMap[bestAirport].completed / bandaraMap[bestAirport].total) * 100).toFixed(1) 
+                : 0;
+
+            document.getElementById('completionSummaryNote').innerHTML = bestAirport
+                ? `<i class="fa-solid fa-circle-info text-emerald-400 mr-1"></i> Performa Tertinggi: Bandara <strong class="text-white">${bestAirport}</strong> dengan Completion Rate <strong class="text-amber-400">${bestRate}%</strong> dari total ${bandaraMap[bestAirport].total} laporan hazard.`
+                : 'Tidak ada data untuk ditampilkan';
+        }
+
+        function renderReportersCountChart() {
+            const ctx = document.getElementById('chartReportersCount').getContext('2d');
+
+            const bandaraMap = {};
+            filteredDataset.forEach(item => {
+                if (!isAllowedAirport(item.airport)) return;
+
+                const b = item.airport || 'UNKNOWN';
+                if (!bandaraMap[b]) {
+                    bandaraMap[b] = { internal: 0, eksternal: 0 };
+                }
+                const source = String(item.report_source).toLowerCase();
+                if (source.includes('internal')) {
+                    bandaraMap[b].internal += 1;
+                } else {
+                    bandaraMap[b].eksternal += 1;
+                }
+            });
+
+            const labels = Object.keys(bandaraMap).sort((a, b) => {
+                const totalA = bandaraMap[a].internal + bandaraMap[a].eksternal;
+                const totalB = bandaraMap[b].internal + bandaraMap[b].eksternal;
+                return totalB - totalA;
+            });
+
+            const internalData = labels.map(b => bandaraMap[b].internal);
+            const externalData = labels.map(b => bandaraMap[b].eksternal);
+
+            if (reportersChartInstance) {
+                reportersChartInstance.destroy();
+            }
+
+            reportersChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Pelapor Internal',
+                            data: internalData,
+                            backgroundColor: 'rgba(99, 102, 241, 0.85)',
+                            borderColor: '#6366f1',
+                            borderWidth: 1,
+                            borderRadius: 6,
+                        },
+                        {
+                            label: 'Pelapor Eksternal',
+                            data: externalData,
+                            backgroundColor: 'rgba(245, 158, 11, 0.85)',
+                            borderColor: '#f59e0b',
+                            borderWidth: 1,
+                            borderRadius: 6,
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: { color: '#cbd5e1', font: { size: 11 } }
+                        },
+                        datalabels: {
+                            color: '#ffffff',
+                            anchor: 'end',
+                            align: 'top',
+                            offset: 2,
+                            font: { weight: 'bold', size: 10 },
+                            formatter: (value) => value > 0 ? value : '',
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: '#e2e8f0', font: { size: 11, weight: 'bold' } }
+                        },
+                        y: {
+                            grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                            ticks: { color: '#94a3b8' },
+                            beginAtZero: true
+                        }
+                    },
+                    layout: { padding: { top: 20 } }
+                }
+            });
+
+            let totalInt = internalData.reduce((a, b) => a + b, 0);
+            let totalExt = externalData.reduce((a, b) => a + b, 0);
+            document.getElementById('reportersSummaryNote').innerHTML = 
+                `<i class="fa-solid fa-circle-info text-sky-400 mr-1"></i> Akumulasi Pelaporan Aktif: <strong class="text-indigo-400">${totalInt} Laporan Internal</strong> & <strong class="text-amber-400">${totalExt} Laporan Eksternal</strong>.`;
+        }
+
+        function renderTopReportersLeaderboard() {
+            const intContainer = document.getElementById('topInternalContainer');
+            const extContainer = document.getElementById('topExternalContainer');
+            const selectedLbAirport = document.getElementById('leaderboardAirportFilter')?.value || 'ALL';
+
+            const intLabel = document.getElementById('internalLeaderboardAirportLabel');
+            const extLabel = document.getElementById('externalLeaderboardAirportLabel');
+            
+            const labelText = selectedLbAirport === 'ALL' 
+                ? '(Seluruh Bandara)' 
+                : `(${selectedLbAirport} - ${airportFullNameMap[selectedLbAirport] || selectedLbAirport})`;
+            
+            if (intLabel) intLabel.textContent = labelText;
+            if (extLabel) extLabel.textContent = labelText;
+
+            // Pengelompokan & Pengakumulasian Reporter dengan Normalisasi Nama & Instansi
+            const groupReporters = (sourceType) => {
+                const map = {};
+                filteredDataset.forEach(d => {
+                    if (selectedLbAirport !== 'ALL' && d.airport !== selectedLbAirport) return;
+
+                    if (d.report_source === sourceType) {
+                        const cleanName = normalizeReporterName(d.reporter_name);
+                        const cleanComp = normalizeCompanyName(d.company);
+
+                        // Key pengelompokan yang diakumulasikan
+                        const key = `${cleanName.toLowerCase()}___${cleanComp.toLowerCase()}___${d.airport}`;
+
+                        if (!map[key]) {
+                            map[key] = {
+                                name: cleanName,
+                                company: cleanComp,
+                                airport: d.airport,
+                                count: 0
+                            };
+                        }
+                        map[key].count += 1;
+                    }
+                });
+                return Object.values(map).sort((a, b) => b.count - a.count).slice(0, 5);
+            };
+
+            const topInt = groupReporters('Internal');
+            const topExt = groupReporters('Eksternal');
+
+            const renderCards = (items, isInternal) => {
+                if (!items || items.length === 0) {
+                    return `<div class="p-4 text-center text-xs text-slate-500">Tidak ada data pelapor untuk kategori ini.</div>`;
+                }
+                return items.map((item, idx) => {
+                    const badgeColors = [
+                        'bg-amber-500/20 text-amber-300 border-amber-500/40',
+                        'bg-slate-400/20 text-slate-200 border-slate-400/40',
+                        'bg-amber-700/20 text-amber-400 border-amber-700/40',
+                        'bg-slate-800 text-slate-400 border-slate-700',
+                        'bg-slate-800 text-slate-400 border-slate-700'
+                    ];
+                    return `
+                        <div class="flex items-center justify-between p-2.5 bg-slate-900/80 rounded-xl border border-slate-800/80 hover:border-slate-700 transition">
+                            <div class="flex items-center space-x-3 min-w-0">
+                                <span class="w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs border ${badgeColors[idx] || badgeColors[3]} shrink-0">
+                                    ${idx + 1}
+                                </span>
+                                <div class="truncate">
+                                    <h4 class="text-xs font-bold text-slate-100 truncate">${item.name}</h4>
+                                    <p class="text-[11px] text-slate-400 truncate">${item.company} <span class="text-sky-400 font-mono font-semibold">• ${item.airport}</span></p>
+                                </div>
+                            </div>
+                            <span class="px-2.5 py-1 rounded-lg text-xs font-bold shrink-0 ${isInternal ? 'bg-indigo-500/15 text-indigo-300 border border-indigo-500/30' : 'bg-amber-500/15 text-amber-300 border border-amber-500/30'}">
+                                ${item.count} Laporan
+                            </span>
+                        </div>
+                    `;
+                }).join('');
+            };
+
+            intContainer.innerHTML = renderCards(topInt, true);
+            extContainer.innerHTML = renderCards(topExt, false);
+        }
+
+        function renderDataTable() {
+            const tbody = document.getElementById('dataTableBody');
+            const searchVal = (document.getElementById('tableSearchInput').value || '').toLowerCase().trim();
+
+            const searchFiltered = filteredDataset.filter(item => {
+                if (!searchVal) return true;
+                return (
+                    String(item.reporter_name || '').toLowerCase().includes(searchVal) ||
+                    String(item.company || '').toLowerCase().includes(searchVal) ||
+                    String(item.judul || '').toLowerCase().includes(searchVal) ||
+                    String(item.airport || '').toLowerCase().includes(searchVal)
+                );
+            });
+
+            const total = searchFiltered.length;
+            const totalPages = Math.ceil(total / rowsPerPage) || 1;
+            if (currentPage > totalPages) currentPage = totalPages;
+
+            const startIndex = (currentPage - 1) * rowsPerPage;
+            const endIndex = Math.min(startIndex + rowsPerPage, total);
+            const paginatedItems = searchFiltered.slice(startIndex, endIndex);
+
+            tbody.innerHTML = '';
+
+            if (paginatedItems.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" class="py-6 text-center text-slate-500 text-xs">Tidak ada data laporan yang cocok.</td></tr>`;
+            } else {
+                paginatedItems.forEach((item, index) => {
+                    const rowNo = startIndex + index + 1;
+                    const isClosed = isClosedStatus(item.status);
+
+                    let statusBadgeClass = "bg-rose-500/20 text-rose-400 border-rose-500/30";
+                    if (isClosed) statusBadgeClass = "bg-emerald-500/20 text-emerald-400 border-emerald-500/30";
+                    else if (String(item.status).includes("PROGRESS")) statusBadgeClass = "bg-amber-500/20 text-amber-400 border-amber-500/30";
+
+                    const tr = document.createElement('tr');
+                    tr.className = "hover:bg-slate-800/40 transition border-b border-slate-800/40";
+                    tr.innerHTML = `
+                        <td class="px-3 py-3 text-slate-400 font-mono text-center">${rowNo}</td>
+                        <td class="px-3 py-3 font-mono text-slate-300 whitespace-nowrap">${item.event_date || '-'}</td>
+                        <td class="px-3 py-3 font-bold text-sky-400 font-mono">${item.airport}</td>
+                        <td class="px-3 py-3">
+                            <span class="px-2 py-0.5 rounded text-[10px] font-semibold ${item.report_source === 'Internal' ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30' : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'}">
+                                ${item.report_source}
+                            </span>
+                        </td>
+                        <td class="px-3 py-3 font-medium text-slate-200">${item.reporter_name}</td>
+                        <td class="px-3 py-3 text-slate-400">${item.company}</td>
+                        <td class="px-3 py-3 text-slate-300 max-w-xs truncate">${item.judul}</td>
+                        <td class="px-3 py-3">
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold border ${statusBadgeClass}">
+                                ${item.status}
+                            </span>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+
+            document.getElementById('tablePaginationInfo').textContent = `Menampilkan ${total === 0 ? 0 : startIndex + 1} - ${endIndex} dari ${total} data`;
+            renderPaginationControls(totalPages);
+        }
+
+        function renderPaginationControls(totalPages) {
+            const container = document.getElementById('paginationControls');
+            container.innerHTML = '';
+
+            if (totalPages <= 1) return;
+
+            const prevBtn = document.createElement('button');
+            prevBtn.className = `px-2.5 py-1 rounded-lg border text-xs ${currentPage === 1 ? 'border-slate-800 text-slate-600 cursor-not-allowed' : 'border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700'}`;
+            prevBtn.innerHTML = `<i class="fa-solid fa-chevron-left"></i>`;
+            prevBtn.disabled = currentPage === 1;
+            prevBtn.onclick = () => { if (currentPage > 1) { currentPage--; renderDataTable(); } };
+            container.appendChild(prevBtn);
+
+            for (let i = 1; i <= totalPages; i++) {
+                if (i === 1 || i === totalPages || (i >= currentPage - 1 && i <= currentPage + 1)) {
+                    const pageBtn = document.createElement('button');
+                    pageBtn.className = `px-3 py-1 rounded-lg text-xs font-semibold ${i === currentPage ? 'bg-sky-600 text-white shadow-md' : 'bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700'}`;
+                    pageBtn.textContent = i;
+                    pageBtn.onclick = () => { currentPage = i; renderDataTable(); };
+                    container.appendChild(pageBtn);
+                } else if (i === currentPage - 2 || i === currentPage + 2) {
+                    const dots = document.createElement('span');
+                    dots.className = "px-1 text-slate-500 text-xs";
+                    dots.textContent = "...";
+                    container.appendChild(dots);
+                }
+            }
+
+            const nextBtn = document.createElement('button');
+            nextBtn.className = `px-2.5 py-1 rounded-lg border text-xs ${currentPage === totalPages ? 'border-slate-800 text-slate-600 cursor-not-allowed' : 'border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700'}`;
+            nextBtn.innerHTML = `<i class="fa-solid fa-chevron-right"></i>`;
+            nextBtn.disabled = currentPage === totalPages;
+            nextBtn.onclick = () => { if (currentPage < totalPages) { currentPage++; renderDataTable(); } };
+            container.appendChild(nextBtn);
+        }
+
+        function openDetailModal(airportCode, filterStatus = 'ALL') {
+            const modal = document.getElementById('detailModal');
+            const modalTitle = document.getElementById('modalTitle');
+            const modalSubtitle = document.getElementById('modalSubtitle');
+            const tbody = document.getElementById('modalTableBody');
+            const totalCountSpan = document.getElementById('modalTotalCount');
+
+            const airportName = airportFullNameMap[airportCode] || airportCode;
+            modalTitle.innerHTML = `<i class="fa-solid fa-building-airport text-sky-400 mr-2"></i> ${airportName} (${airportCode})`;
+
+            let statusText = "Seluruh Status Temuan";
+            if (filterStatus === 'CLOSED') statusText = "Kategori Selesai (CLOSED)";
+            else if (filterStatus === 'OPEN') statusText = "Kategori Belum Selesai (OPEN / ON-PROGRESS)";
+            modalSubtitle.textContent = `Rincian Laporan Temuan Safety • ${statusText}`;
+
+            const items = filteredDataset.filter(item => {
+                if (item.airport !== airportCode) return false;
+                if (filterStatus === 'CLOSED') return isClosedStatus(item.status);
+                if (filterStatus === 'OPEN') return !isClosedStatus(item.status);
+                return true;
+            });
+
+            tbody.innerHTML = '';
+
+            if (items.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" class="py-6 text-center text-slate-500 text-xs">Tidak ada data untuk rincian ini.</td></tr>`;
+            } else {
+                items.forEach((item, idx) => {
+                    const isClosed = isClosedStatus(item.status);
+                    let badgeClass = "bg-rose-500/20 text-rose-400 border-rose-500/30";
+                    if (isClosed) badgeClass = "bg-emerald-500/20 text-emerald-400 border-emerald-500/30";
+                    else if (String(item.status).includes("PROGRESS")) badgeClass = "bg-amber-500/20 text-amber-400 border-amber-500/30";
+
+                    const tr = document.createElement('tr');
+                    tr.className = "hover:bg-slate-800/40 border-b border-slate-800/40";
+                    tr.innerHTML = `
+                        <td class="px-3 py-2.5 text-slate-400 font-mono">${idx + 1}</td>
+                        <td class="px-3 py-2.5 font-mono text-slate-300 whitespace-nowrap">${item.event_date || '-'}</td>
+                        <td class="px-3 py-2.5 font-bold text-sky-400 font-mono">${item.airport}</td>
+                        <td class="px-3 py-2.5 text-slate-300">${item.report_source}</td>
+                        <td class="px-3 py-2.5 font-medium text-slate-200">${item.reporter_name}</td>
+                        <td class="px-3 py-2.5 text-slate-400">${item.company}</td>
+                        <td class="px-3 py-2.5 text-slate-300 max-w-xs truncate">${item.judul}</td>
+                        <td class="px-3 py-2.5">
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold border ${badgeClass}">
+                                ${item.status}
+                            </span>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+
+            totalCountSpan.textContent = `Total: ${items.length} Data Laporan`;
+            modal.classList.remove('hidden');
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('detailModal');
+            modal.classList.add('hidden');
+        }
+
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                let jsonRows = [];
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    jsonRows = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+                } catch (fileErr) {
+                    console.error("File parsing error:", fileErr);
+                    showToast("Gagal membaca file. Pastikan format Excel (.xlsx/.xls) atau CSV valid.", "error");
+                    return;
+                }
+
+                if (!jsonRows || jsonRows.length === 0) {
+                    showToast("File tidak berisi data atau lembar kerja kosong", "error");
+                    return;
+                }
+
+                try {
+                    const parsedData = jsonRows.map((row, idx) => {
+                        const findVal = (exactKey, fallbackKeywords) => {
+                            if (row[exactKey] !== undefined && row[exactKey] !== null && String(row[exactKey]).trim() !== "") {
+                                return String(row[exactKey]).trim();
+                            }
+                            const foundKey = Object.keys(row).find(k => 
+                                fallbackKeywords.some(kw => k.toLowerCase().replace(/[^a-z0-9]/g, '').includes(kw.toLowerCase().replace(/[^a-z0-9]/g, '')))
+                            );
+                            return (foundKey && row[foundKey] !== undefined && row[foundKey] !== null) ? String(row[foundKey]).trim() : "";
+                        };
+
+                        const rawAirport = findVal("Airport", ['airport', 'bandara', 'location', 'lokasi', 'cabang', 'iata', 'nama_bandara', 'namabandara']);
+                        const airportCode = convertToIATA(rawAirport || 'UNKNOWN');
+
+                        let eventDate = findVal("Event Date", ['eventdate', 'event_date', 'tanggal', 'date', 'tgl', 'waktu']);
+                        if (!eventDate) {
+                            eventDate = new Date().toISOString().split('T')[0];
+                        } else if (eventDate instanceof Date) {
+                            eventDate = eventDate.toISOString().split('T')[0];
+                        } else {
+                            const possibleNum = Number(eventDate);
+                            if (!isNaN(possibleNum) && possibleNum > 30000 && possibleNum < 70000) {
+                                const jsDate = new Date(Math.round((possibleNum - 25569) * 86400 * 1000));
+                                eventDate = jsDate.toISOString().split('T')[0];
+                            } else {
+                                if (typeof eventDate === 'string' && eventDate.includes('/')) {
+                                    const parts = eventDate.split('/');
+                                    if (parts.length === 3 && parts[2].length === 4) {
+                                        const day = parts[0].padStart(2, '0');
+                                        const month = parts[1].padStart(2, '0');
+                                        const year = parts[2];
+                                        eventDate = `${year}-${month}-${day}`;
+                                    }
+                                }
+                                const parsedDt = new Date(eventDate);
+                                if (!isNaN(parsedDt.getTime())) {
+                                    eventDate = parsedDt.toISOString().split('T')[0];
+                                }
+                            }
+                        }
+
+                        const reporterName = findVal("Reporter Name", ['reportername', 'reporter_name', 'nama_pelapor', 'reporter', 'nama', 'pelapor']) || 'Anonim';
+                        const company = findVal("Company/Airport", ['companyairport', 'company_airport', 'company', 'perusahaan', 'instansi', 'unit', 'sub_unit', 'divisi']) || '-';
+                        const rawSource = findVal("Report Source", ['reportsource', 'report_source', 'sumber', 'jenis_pelapor', 'source']);
+
+                        const reportSource = determineReportSource(reporterName, company, rawSource);
+                        const judul = findVal("Judul Temuan", ['judul', 'temuan', 'finding', 'deskripsi', 'description', 'title', 'detail', 'uraian']) || 'Laporan Temuan Safety';
+
+                        const rawStatus = findVal("Status", ['status', 'state', 'condition', 'kondisi', 'tindak_lanjut']) || 'OPEN';
+                        let cleanStatus = rawStatus.trim().toUpperCase();
+                        if (isClosedStatus(cleanStatus)) {
+                            cleanStatus = 'CLOSED';
+                        } else if (cleanStatus.includes('PROGRESS') || cleanStatus.includes('PROSES')) {
+                            cleanStatus = 'ON-PROGRESS';
+                        } else {
+                            cleanStatus = 'OPEN';
+                        }
+
+                        return {
+                            id: idx + 1,
+                            airport: airportCode,
+                            event_date: eventDate,
+                            report_source: reportSource,
+                            reporter_name: reporterName,
+                            company: company,
+                            judul: judul,
+                            status: cleanStatus
+                        };
+                    }).filter(item => isAllowedAirport(item.airport));
+
+                    if (parsedData.length === 0) {
+                        showToast("Data dalam file tidak memiliki kolom Bandara (IATA) yang valid.", "error");
+                        return;
+                    }
+
+                    rawDataset = parsedData;
+                    filteredDataset = [...rawDataset];
+                    
+                    initFiltersDropdowns();
+                    resetFilters();
+                    showToast(`Berhasil memuat ${parsedData.length} data laporan dari file!`);
+                } catch (renderErr) {
+                    console.error("Dashboard Rendering Error:", renderErr);
+                    showToast("Gagal memproses data laporan ke dashboard.", "error");
+                }
+            };
+
+            reader.readAsArrayBuffer(file);
+        }
+
+        function exportRekapTableExcel() {
+            const bandaraMap = {};
+            filteredDataset.forEach(item => {
+                const b = item.airport || 'UNKNOWN';
+                if (!bandaraMap[b]) {
+                    bandaraMap[b] = { code: b, total: 0, completed: 0, open: 0 };
+                }
+                bandaraMap[b].total += 1;
+                if (isClosedStatus(item.status)) bandaraMap[b].completed += 1;
+                else bandaraMap[b].open += 1;
+            });
+
+            const rekapRows = Object.values(bandaraMap).map(d => ({
+                "NAMA BANDARA / CABANG": airportFullNameMap[d.code] || d.code,
+                "KODE IATA": d.code,
+                "TOTAL HAZARD": d.total,
+                "SELESAI": d.completed,
+                "PROSES": d.open,
+                "% PENYELESAIAN": d.total > 0 ? `${((d.completed / d.total) * 100).toFixed(1)}%` : "0.0%"
+            }));
+
+            const ws = XLSX.utils.json_to_sheet(rekapRows);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Rekap_Completion_Rate");
+            XLSX.writeFile(wb, `Rekap_Completion_Rate_Bandara_${new Date().toISOString().split('T')[0]}.xlsx`);
+            showToast("Tabel Rekapitulasi Completion Rate berhasil diunduh dalam format Excel!");
+        }
+
+        function generateAndDownloadSample() {
+            const sampleRows = [
+                { "Airport": "Soekarno-Hatta (CGK)", "Event Date": "2026-03-01", "Report Source": "Internal", "Reporter Name": "Rudi Hartono", "Company/Airport": "Safety Unit CGK", "Judul Temuan": "Kabel Penerangan Runway Terlepas", "Status": "CLOSED" },
+                { "Airport": "CGK", "Event Date": "2026-03-02", "Report Source": "Eksternal", "Reporter Name": "Athifa", "Company/Airport": "PT Cardig Air Cargo", "Judul Temuan": "Ceceran Oli di Area Loading Cargo", "Status": "ON-PROGRESS" },
+                { "Airport": "I Gusti Ngurah Rai (DPS)", "Event Date": "2026-03-02", "Report Source": "Internal", "Reporter Name": "Made Suardana", "Company/Airport": "Avsec DPS", "Judul Temuan": "Kamera CCTV Gate 4 Rusak", "Status": "CLOSED" },
+                { "Airport": "DPS", "Event Date": "2026-03-03", "Report Source": "Eksternal", "Reporter Name": "I Ketut Ari", "Company/Airport": "Swissport Indonesia", "Judul Temuan": "Pintu Hangar A Macet", "Status": "OPEN" },
+                { "Airport": "Juanda (SUB)", "Event Date": "2026-03-04", "Report Source": "Internal", "Reporter Name": "Bambang Tri", "Company/Airport": "Engineering SUB", "Judul Temuan": "Lampu Neon Terminal 1 Mati", "Status": "ON-PROGRESS" }
+            ];
+
+            const ws = XLSX.utils.json_to_sheet(sampleRows);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Laporan Temuan");
+            XLSX.writeFile(wb, "Template_Laporan_Temuan_Bandara_IATA.xlsx");
+            showToast("Template Excel standar IATA & Status telah diunduh");
+        }
+
+        function exportFilteredDataCSV() {
+            if (filteredDataset.length === 0) {
+                showToast("Tidak ada data untuk diekspor", "error");
+                return;
+            }
+
+            const exportData = filteredDataset.map(item => ({
+                "Airport": item.airport,
+                "Event Date": item.event_date,
+                "Report Source": item.report_source,
+                "Reporter Name": item.reporter_name,
+                "Company/Airport": item.company,
+                "Judul Temuan": item.judul,
+                "Status": item.status
+            }));
+
+            const ws = XLSX.utils.json_to_sheet(exportData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Filtered_Report");
+            XLSX.writeFile(wb, `Laporan_Bandara_Filtered_${new Date().toISOString().split('T')[0]}.csv`, { bookType: 'csv' });
+            showToast("Data hasil filter berhasil diekspor ke CSV!");
+        }
+    </script>
+</body>
+</html>
