@@ -475,7 +475,10 @@
             str = str.trim();
 
             const lower = str.toLowerCase();
-            if (lower === 'api' || lower === 'pt api' || lower === 'angkasa pura' || lower === 'angkasa pura i' || lower === 'angkasa pura ii' || lower === 'angkasa pura indonesia') {
+            if (lower.includes('airnav')) {
+                return 'AirNav Indonesia';
+            }
+            if (lower === 'api' || lower === 'pt api' || lower.includes('angkasa pura') || lower.includes('injourney')) {
                 return 'InJourney Airports (API)';
             }
             if (lower.includes('gmf') || lower.includes('garuda maintenance')) {
@@ -487,6 +490,12 @@
             if (lower.includes('jas') || lower.includes('jas airport')) {
                 return 'PT JAS Airport Services';
             }
+            if (lower.includes('lion') || lower.includes('batik') || lower.includes('wings')) {
+                return 'Lion Air Group';
+            }
+            if (lower.includes('airasia') || lower.includes('air asia')) {
+                return 'AirAsia';
+            }
             return str;
         }
 
@@ -494,7 +503,6 @@
         function normalizeReporterName(nameStr) {
             if (!nameStr) return 'Anonim';
             let str = String(nameStr).trim();
-            // Bersihkan spasi ganda atau karakter berlebih
             return str.replace(/\s+/g, ' ');
         }
 
@@ -1261,21 +1269,40 @@
                         const cleanName = normalizeReporterName(d.reporter_name);
                         const cleanComp = normalizeCompanyName(d.company);
 
-                        // Key pengelompokan yang diakumulasikan
-                        const key = `${cleanName.toLowerCase()}___${cleanComp.toLowerCase()}___${d.airport}`;
+                        // Pengelompokan berbasis Nama Reporter & Bandara agar terakumulasi sempurna
+                        const key = `${cleanName.toLowerCase()}___${d.airport.toLowerCase()}`;
 
                         if (!map[key]) {
                             map[key] = {
                                 name: cleanName,
                                 company: cleanComp,
+                                companiesMap: { [cleanComp]: 1 },
                                 airport: d.airport,
                                 count: 0
                             };
+                        } else {
+                            map[key].companiesMap[cleanComp] = (map[key].companiesMap[cleanComp] || 0) + 1;
                         }
                         map[key].count += 1;
                     }
                 });
-                return Object.values(map).sort((a, b) => b.count - a.count).slice(0, 5);
+
+                return Object.values(map).map(item => {
+                    let primaryComp = item.company;
+                    let maxC = 0;
+                    for (const [comp, cnt] of Object.entries(item.companiesMap)) {
+                        if (cnt > maxC) {
+                            maxC = cnt;
+                            primaryComp = comp;
+                        }
+                    }
+                    return {
+                        name: item.name,
+                        company: primaryComp,
+                        airport: item.airport,
+                        count: item.count
+                    };
+                }).sort((a, b) => b.count - a.count).slice(0, 5);
             };
 
             const topInt = groupReporters('Internal');
@@ -1283,30 +1310,73 @@
 
             const renderCards = (items, isInternal) => {
                 if (!items || items.length === 0) {
-                    return `<div class="p-4 text-center text-xs text-slate-500">Tidak ada data pelapor untuk kategori ini.</div>`;
+                    return `<div class="p-6 text-center text-xs text-slate-500 flex flex-col items-center justify-center space-y-2">
+                        <i class="fa-solid fa-inbox text-2xl text-slate-700"></i>
+                        <span>Tidak ada data pelapor untuk kategori ini.</span>
+                    </div>`;
                 }
+
+                const maxCount = items[0]?.count || 1;
+
                 return items.map((item, idx) => {
-                    const badgeColors = [
-                        'bg-amber-500/20 text-amber-300 border-amber-500/40',
-                        'bg-slate-400/20 text-slate-200 border-slate-400/40',
-                        'bg-amber-700/20 text-amber-400 border-amber-700/40',
-                        'bg-slate-800 text-slate-400 border-slate-700',
-                        'bg-slate-800 text-slate-400 border-slate-700'
-                    ];
+                    // Kalkulasi proporsi bar persentase (min 12% untuk estetika visual)
+                    const pct = Math.min(100, Math.max(12, Math.round((item.count / maxCount) * 100)));
+
+                    // Rank Badge Metallic & Medali
+                    let rankBadge = '';
+                    if (idx === 0) {
+                        rankBadge = `<div class="w-7 h-7 rounded-lg bg-gradient-to-br from-amber-300 via-amber-400 to-yellow-600 text-slate-950 font-black text-xs flex items-center justify-center shadow-lg shadow-amber-500/30 border border-amber-200 shrink-0" title="Juara 1">
+                            🥇
+                        </div>`;
+                    } else if (idx === 1) {
+                        rankBadge = `<div class="w-7 h-7 rounded-lg bg-gradient-to-br from-slate-200 via-slate-300 to-slate-400 text-slate-950 font-black text-xs flex items-center justify-center shadow-md shadow-slate-400/20 border border-white/40 shrink-0" title="Juara 2">
+                            🥈
+                        </div>`;
+                    } else if (idx === 2) {
+                        rankBadge = `<div class="w-7 h-7 rounded-lg bg-gradient-to-br from-amber-600 via-amber-700 to-yellow-900 text-amber-100 font-black text-xs flex items-center justify-center shadow-md shadow-amber-900/30 border border-amber-500/40 shrink-0" title="Juara 3">
+                            🥉
+                        </div>`;
+                    } else {
+                        rankBadge = `<div class="w-7 h-7 rounded-lg bg-slate-800/90 text-slate-400 font-bold text-xs flex items-center justify-center border border-slate-700/80 shrink-0">
+                            ${idx + 1}
+                        </div>`;
+                    }
+
+                    const barGradient = isInternal 
+                        ? 'from-indigo-600/30 via-indigo-500/20 to-transparent' 
+                        : 'from-amber-600/30 via-amber-500/20 to-transparent';
+
+                    const badgeStyle = isInternal
+                        ? 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30 shadow-indigo-950/50'
+                        : 'bg-amber-500/15 text-amber-300 border-amber-500/30 shadow-amber-950/50';
+
                     return `
-                        <div class="flex items-center justify-between p-2.5 bg-slate-900/80 rounded-xl border border-slate-800/80 hover:border-slate-700 transition">
-                            <div class="flex items-center space-x-3 min-w-0">
-                                <span class="w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs border ${badgeColors[idx] || badgeColors[3]} shrink-0">
-                                    ${idx + 1}
-                                </span>
-                                <div class="truncate">
-                                    <h4 class="text-xs font-bold text-slate-100 truncate">${item.name}</h4>
-                                    <p class="text-[11px] text-slate-400 truncate">${item.company} <span class="text-sky-400 font-mono font-semibold">• ${item.airport}</span></p>
+                        <div class="relative overflow-hidden group p-3 bg-slate-900/90 hover:bg-slate-850 rounded-xl border border-slate-800 hover:border-slate-700 transition-all duration-200 shadow-lg">
+                            <!-- Visual Progress Bar Background -->
+                            <div class="absolute inset-y-0 left-0 bg-gradient-to-r ${barGradient} transition-all duration-500 pointer-events-none rounded-xl" style="width: ${pct}%"></div>
+
+                            <div class="relative z-10 flex items-center justify-between gap-3">
+                                <div class="flex items-center space-x-3 min-w-0 flex-1">
+                                    ${rankBadge}
+                                    <div class="truncate">
+                                        <div class="flex items-center space-x-2">
+                                            <h4 class="text-xs font-bold text-slate-100 truncate group-hover:text-white transition">${item.name}</h4>
+                                            <span class="px-1.5 py-0.2 text-[10px] font-mono font-bold bg-slate-800 text-sky-400 rounded border border-sky-500/20">${item.airport}</span>
+                                        </div>
+                                        <p class="text-[11px] text-slate-400 truncate mt-0.5 flex items-center">
+                                            <i class="fa-regular fa-building text-[10px] mr-1 text-slate-500"></i>
+                                            ${item.company}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div class="shrink-0 text-right">
+                                    <span class="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-extrabold border shadow-sm ${badgeStyle}">
+                                        <i class="fa-solid fa-file-lines mr-1.5 text-[10px] opacity-80"></i>
+                                        ${item.count} <span class="font-normal text-[10px] ml-1 opacity-90">Laporan</span>
+                                    </span>
                                 </div>
                             </div>
-                            <span class="px-2.5 py-1 rounded-lg text-xs font-bold shrink-0 ${isInternal ? 'bg-indigo-500/15 text-indigo-300 border border-indigo-500/30' : 'bg-amber-500/15 text-amber-300 border border-amber-500/30'}">
-                                ${item.count} Laporan
-                            </span>
                         </div>
                     `;
                 }).join('');
